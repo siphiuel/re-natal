@@ -105,6 +105,9 @@ platformMeta     =
   'wpf':
     name:     "WPF"
     sources:  ["core.cljs"]
+  'desktop':
+    name:     'desktop'
+    sources:  ["core.cljs"]
 
 log = (s, color = 'green') ->
   console.log chalk[color] s
@@ -501,6 +504,9 @@ generateReactNativeProject = (projName) ->
   mainApplicationPath = "android/app/src/main/java/com/#{projName.toLowerCase()}/MainApplication.java"
   edit mainApplicationPath, [[/@Override\s+.*getJSMainModuleName.*\s+.*\s+}/g, ""]]
 
+generateDesktopProject = (projName) ->
+  log 'Not implemented: Creating React Native Desktop project.'
+
 generateWindowsProject = (projName) ->
   log 'Creating React Native windows project.'
   exec "node -e \"require('react-native-windows/local-cli/generate-windows')('.', '#{projName}', '#{projName}')\""
@@ -570,6 +576,9 @@ init = (interfaceName, projName, platforms) ->
     if 'windows' in platforms || 'wpf' in platforms
       pkg.dependencies['react-native-windows'] = rnWinVersion
 
+    if 'desktop' in platforms
+      log 'TODO: Inject dependencies on react-native-desktop instead of react-native'
+
     fs.writeFileSync 'package.json', JSON.stringify pkg, null, 2
 
     installDeps()
@@ -583,6 +592,9 @@ init = (interfaceName, projName, platforms) ->
 
     if 'wpf' in platforms
       generateWpfProject(projName)
+
+    if 'desktop' in platforms
+      generateDesktopProject(projName)
 
     updateGitIgnore(platforms)
 
@@ -814,6 +826,9 @@ doUpgrade = (config) ->
       android:
         host: "localhost"
         modules: []
+      desktop:
+        host: "localhost"
+        modules: []
 
   if config.iosHost?
     config.platforms.ios.host = config.iosHost
@@ -823,12 +838,19 @@ doUpgrade = (config) ->
     config.platforms.android.host = config.androidHost
     delete config.androidHost
 
+  if config.desktopHost?
+    config.platforms.desktop.host = config.desktopHost
+    delete config.desktopHost
+
   if config.modulesPlatform?
     if config.modulesPlatform.ios?
       config.platforms.ios.modules = config.platforms.ios.modules.concat(config.modulesPlatform.ios)
 
     if config.modulesPlatform.android?
       config.platforms.android.modules = config.platforms.android.modules.concat(config.modulesPlatform.android)
+
+    if config.modulesPlatform.desktop?
+      config.platforms.desktop.modules = config.platforms.desktop.modules.concat(config.modulesPlatform.desktop)
 
     delete config.modulesPlatform
 
@@ -916,6 +938,7 @@ cli.command 'init <name>'
   .option "-i, --interface [#{interfaceNames.join ' '}]", 'specify React interface', defaultInterface
   .option '-u, --uwp', 'create project for UWP app'
   .option '-w, --wpf', 'create project for WPF app'
+  .option '-d, --desktop', 'create project for desktop app'
   .action (name, cmd) ->
     if typeof name isnt 'string'
       logErr '''
@@ -930,6 +953,8 @@ cli.command 'init <name>'
       platforms.push 'windows'
     if cmd.wpf?
       platforms.push 'wpf'
+    if cmd.desktop?
+      platforms.push 'desktop'
     ensureFreePort -> init(cmd.interface, name, platforms)
 
 cli.command 'upgrade'
@@ -938,7 +963,7 @@ cli.command 'upgrade'
   doUpgrade readConfig()
 
 cli.command 'add-platform <platform>'
-  .description 'adds additional app platform: \'windows\' - UWP app, \'wpf\' - WPF app'
+  .description 'adds additional app platform: \'windows\' - UWP app, \'wpf\' - WPF app, \'desktop\' - desktop app'
   .action (platform) ->
     addPlatform(platform)
 
